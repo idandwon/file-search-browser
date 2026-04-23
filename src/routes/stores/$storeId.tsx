@@ -19,7 +19,7 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { TruncatedText } from '@/components/shared/truncated-text'
 import { useDocument } from '@/hooks/documents/use-document'
 import { useStore } from '@/hooks/stores/use-store'
-import { validateListSearch } from '@/lib/shared/search/list-search'
+import { validateDocumentListSearch } from '@/lib/documents/list-search'
 
 const storeRouteApi = getRouteApi('/stores/$storeId')
 
@@ -102,6 +102,6 @@ const StoreLayout = () => {
 }
 
 export const Route = createFileRoute('/stores/$storeId')({
-  validateSearch: validateListSearch,
+  validateSearch: validateDocumentListSearch,
   component: StoreLayout,
 })

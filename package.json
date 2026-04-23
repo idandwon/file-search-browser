@@ -7,7 +7,9 @@
     "dev": "vite",
     "build": "tsc -b && vite build",
     "lint": "eslint .",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "export:documents": "node scripts/export-store-documents.mjs",
+    "extract:item-ids": "node scripts/extract-document-item-ids.mjs"
   },
   "dependencies": {
     "@google/genai": "^1.43.0",
