@@ -1,5 +1,13 @@
 import { Link } from '@tanstack/react-router'
-import { FileText, HardDrive, FileType, Calendar, ChevronRight, Trash2 } from 'lucide-react'
+import {
+  FileText,
+  HardDrive,
+  FileType,
+  Calendar,
+  ChevronRight,
+  RefreshCw,
+  Trash2,
+} from 'lucide-react'
 import { Card } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -11,14 +19,19 @@ import {
   getDocumentId,
   stateVariant,
 } from '@/lib/documents/presentation'
-import type { ListSearch } from '@/lib/shared/search/list-search'
+import {
+  getDocumentSortFieldLabel,
+  type DocumentListSearch,
+  type DocumentSortField,
+} from '@/lib/documents/list-search'
 import { cn } from '@/lib/utils'
 import { formatBytes, formatDate } from '@/lib/shared/format'
 
 type DocumentCardProps = {
   readonly document: Document
   readonly storeId: string
-  readonly search: ListSearch
+  readonly search: DocumentListSearch
+  readonly sortField: DocumentSortField
   readonly hasActiveSelection?: boolean
   readonly isSelected?: boolean
   readonly onSelectedChange?: (checked: boolean) => void
@@ -46,47 +59,70 @@ type DocumentCardMainContentProps = {
   readonly document: Document
   readonly documentId: string
   readonly displayName: string
+  readonly sortField: DocumentSortField
 }
+
+const getDocumentDateMeta = (
+  document: Document,
+  sortField: DocumentSortField,
+): {
+  readonly icon: React.ComponentType<{ className?: string }>
+  readonly label: string
+  readonly value: string | undefined
+} => ({
+  icon: sortField === 'updated' ? RefreshCw : Calendar,
+  label: getDocumentSortFieldLabel(sortField),
+  value: sortField === 'updated' ? document.updateTime : document.createTime,
+})
 
 const DocumentCardMainContent = ({
   document,
   documentId,
   displayName,
-}: DocumentCardMainContentProps) => (
-  <>
-    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-muted">
-      <FileText className="h-5 w-5 text-muted-foreground" />
-    </div>
-    <div className="min-w-0 flex-1 space-y-2">
-      <p className="truncate text-sm font-semibold leading-none">
-        {displayName}
-      </p>
-      <p className="truncate font-mono text-xs text-muted-foreground">
-        {documentId}
-      </p>
-      <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
-        <Badge variant={stateVariant(document.state)} className="px-1.5 py-0 text-[0.65rem]">
-          {document.state ?? 'UNKNOWN'}
-        </Badge>
-        <MetaDot />
-        <MetaItem icon={HardDrive}>{formatBytes(document.sizeBytes)}</MetaItem>
-        {document.mimeType && (
-          <>
-            <MetaDot />
-            <MetaItem icon={FileType}>{document.mimeType}</MetaItem>
-          </>
-        )}
-        <MetaDot />
-        <MetaItem icon={Calendar}>{formatDate(document.createTime)}</MetaItem>
+  sortField,
+}: DocumentCardMainContentProps) => {
+  const dateMeta = getDocumentDateMeta(document, sortField)
+  const DateIcon = dateMeta.icon
+
+  return (
+    <>
+      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-muted">
+        <FileText className="h-5 w-5 text-muted-foreground" />
       </div>
-    </div>
-  </>
-)
+      <div className="min-w-0 flex-1 space-y-2">
+        <p className="truncate text-sm font-semibold leading-none">
+          {displayName}
+        </p>
+        <p className="truncate font-mono text-xs text-muted-foreground">
+          {documentId}
+        </p>
+        <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+          <Badge variant={stateVariant(document.state)} className="px-1.5 py-0 text-[0.65rem]">
+            {document.state ?? 'UNKNOWN'}
+          </Badge>
+          <MetaDot />
+          <MetaItem icon={HardDrive}>{formatBytes(document.sizeBytes)}</MetaItem>
+          {document.mimeType && (
+            <>
+              <MetaDot />
+              <MetaItem icon={FileType}>{document.mimeType}</MetaItem>
+            </>
+          )}
+          <MetaDot />
+          <MetaItem icon={DateIcon}>
+            {dateMeta.label} {formatDate(dateMeta.value)}
+          </MetaItem>
+        </div>
+      </div>
+    </>
+  )
+}
 
 export const DocumentCard = ({
   document,
   storeId,
   search,
+  sortField,
   hasActiveSelection = false,
   isSelected = false,
   onSelectedChange,
@@ -120,6 +156,7 @@ export const DocumentCard = ({
           document={document}
           documentId={documentId}
           displayName={displayName}
+          sortField={sortField}
         />
       </Link>
 

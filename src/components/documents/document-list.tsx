@@ -2,6 +2,7 @@ import { useCallback, useMemo, useState } from 'react'
 import { getRouteApi, useNavigate } from '@tanstack/react-router'
 import {
   AlertTriangle,
+  ArrowUpDown,
   FileText,
   SearchX,
   Trash2,
@@ -15,9 +16,16 @@ import { useVisibleDocuments } from '@/hooks/documents/use-visible-documents'
 import { useBackgroundSearchPagination } from '@/hooks/search/use-background-search-pagination'
 import { useListSearchState } from '@/hooks/search/use-list-search-state'
 import { getDocumentDisplayName, getDocumentId } from '@/lib/documents/presentation'
+import {
+  buildDocumentListSearch,
+  DOCUMENT_SORT_OPTIONS,
+  getDocumentSortField,
+  getDocumentSortLabel,
+  isDocumentSortValue,
+  resolveDocumentSort,
+} from '@/lib/documents/list-search'
 import { hasDocumentSearchMatch } from '@/lib/documents/search'
 import type { Document } from '@/lib/api/types'
-import { buildListSearch } from '@/lib/shared/search/list-search'
 import { BulkDeleteDocumentsDialog } from './bulk-delete-documents-dialog'
 import { DocumentCard } from './document-card'
 import { DocumentListSkeleton } from './document-list-skeleton'
@@ -31,6 +39,13 @@ import { SearchLoadMoreAction } from '@/components/shared/search-load-more-actio
 import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Separator } from '@/components/ui/separator'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
 import {
   Tooltip,
   TooltipContent,
@@ -195,17 +210,23 @@ export const DocumentList = ({
   toolbarActions,
 }: DocumentListProps) => {
   const navigate = useNavigate({ from: '/stores/$storeId/' })
-  const { q } = storeDocumentsIndexRouteApi.useSearch()
+  const { q, sort } = storeDocumentsIndexRouteApi.useSearch()
   const [selectedDocumentIds, setSelectedDocumentIds] = useState<Set<string>>(
     createEmptySelection,
   )
   const [bulkDeleteSummary, setBulkDeleteSummary] = useState<BulkDeleteSummary | null>(null)
+  const documentSort = resolveDocumentSort(sort)
+  const sortField = getDocumentSortField(documentSort)
 
   const setSearch = useCallback(
     (nextValue: string) => {
       void navigate({
         replace: true,
-        search: buildListSearch(nextValue),
+        search: (prev) =>
+          buildDocumentListSearch({
+            q: nextValue,
+            sort: prev.sort,
+          }),
       })
     },
     [navigate],
@@ -242,8 +263,12 @@ export const DocumentList = ({
       ? searchDocumentsQuery.items
       : browseDocumentsQuery.items,
     search: hasActiveSearch ? searchQuery : '',
+    sort: documentSort,
   })
-  const documentSearch = buildListSearch(search)
+  const documentSearch = buildDocumentListSearch({
+    q: search,
+    sort: documentSort,
+  })
   const backgroundSearch = useBackgroundSearchPagination({
     isSearchActive: canRunSearchPagination,
     runScopeKey: searchRunScopeKey,
@@ -309,6 +334,24 @@ export const DocumentList = ({
       setSearchInputValue(nextValue)
     },
     [clearAllSelectionState, setSearchInputValue],
+  )
+
+  const handleSortChange = useCallback(
+    (nextValue: string) => {
+      if (!isDocumentSortValue(nextValue)) {
+        return
+      }
+
+      void navigate({
+        replace: true,
+        search: (prev) =>
+          buildDocumentListSearch({
+            q: prev.q ?? '',
+            sort: nextValue,
+          }),
+      })
+    },
+    [navigate],
   )
 
   const handleDocumentSelectionChange = useCallback(
@@ -400,6 +443,26 @@ export const DocumentList = ({
           />
         </div>
 
+        <div className="w-full sm:w-[13rem]">
+          <Select value={documentSort} onValueChange={handleSortChange}>
+            <SelectTrigger
+              aria-label="Sort documents"
+              title={getDocumentSortLabel(documentSort)}
+              className="w-full"
+            >
+              <ArrowUpDown className="h-4 w-4 text-muted-foreground" />
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {DOCUMENT_SORT_OPTIONS.map((option) => (
+                <SelectItem key={option.value} value={option.value}>
+                  {option.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+
         {hasSelection ? (
           <div className="flex h-9 w-full items-center justify-between gap-2 rounded-md border border-border/70 bg-muted/25 px-2 sm:w-auto sm:justify-start">
             <SelectionToolbarCheckbox
@@ -488,6 +551,7 @@ export const DocumentList = ({
                 document={doc}
                 storeId={storeId}
                 search={documentSearch}
+                sortField={sortField}
                 hasActiveSelection={hasSelection}
                 isSelected={selectedVisibleDocumentIds.has(documentId)}
                 onSelectedChange={(checked) =>
